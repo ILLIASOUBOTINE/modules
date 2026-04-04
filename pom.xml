@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
-        <module>user-srvice</module>
+        <module>user-service</module>
     </modules>
 
     <properties>
