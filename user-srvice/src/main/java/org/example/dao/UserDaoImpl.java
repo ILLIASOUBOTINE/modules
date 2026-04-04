@@ -1,6 +1,6 @@
 package org.example.dao;
 
-import org.example.entity.User;
+import org.example.entity.UserEntity;
 import org.hibernate.Session;
 
 /**
@@ -9,28 +9,28 @@ import org.hibernate.Session;
  * Extends {@link CrudDaoImpl} to inherit generic CRUD operations
  * and provides a concrete implementation for {@link #findByEmail(String)}.
  */
-public class UserDaoImpl extends CrudDaoImpl<User> implements UserDao {
+public class UserDaoImpl extends CrudDaoImpl<UserEntity> implements UserDao {
 
     /**
-     * Constructs a new {@link UserDaoImpl} and sets the entity class to {@link User}.
+     * Constructs a new {@link UserDaoImpl} and sets the entity class to {@link UserEntity}.
      */
     public UserDaoImpl() {
-        this.eClass = User.class;
+        this.eClass = UserEntity.class;
     }
 
     /**
-     * Finds a {@link User} entity by its email.
+     * Finds a {@link UserEntity} entity by its email.
      * <p>
      * Opens a new Hibernate session and executes a query to fetch a single result.
      *
      * @param email email of the user
-     * @return {@link User} with the given email, or {@code null} if not found
+     * @return {@link UserEntity} with the given email, or {@code null} if not found
      */
     @Override
-    public User findByEmail(String email) {
+    public UserEntity findByEmail(String email) {
         try (Session session = sessionFactory.openSession()) {
             return session.createQuery(
-                            "FROM User WHERE email = :email", User.class)
+                            "FROM UserEntity WHERE email = :email", UserEntity.class)
                     .setParameter("email", email)
                     .uniqueResult();
         }

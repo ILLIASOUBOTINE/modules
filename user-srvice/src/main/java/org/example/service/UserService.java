@@ -1,7 +1,7 @@
 package org.example.service;
 
 import org.example.dto.UserUpdateDto;
-import org.example.entity.User;
+import org.example.entity.UserEntity;
 import org.example.exception.DuplicateException;
 
 import java.util.List;
@@ -28,14 +28,14 @@ public interface UserService {
      * @param id user id
      * @return User or null if not found
      */
-    User getUser(Long id);
+    UserEntity getUser(Long id);
 
     /**
      * Returns all users.
      *
      * @return list of users
      */
-    List<User> getAllUsers();
+    List<UserEntity> getAllUsers();
 
     /**
      * Updates user fields.

@@ -2,14 +2,14 @@ package org.example.service;
 
 import org.example.dao.UserDao;
 import org.example.dto.UserUpdateDto;
-import org.example.entity.User;
+import org.example.entity.UserEntity;
 import org.example.exception.DuplicateException;
 import org.example.exception.DatabaseException;
 
 import java.util.List;
 
 /**
- * Service layer implementation for managing {@link User} entities.
+ * Service layer implementation for managing {@link UserEntity} entities.
  * <p>
  * Handles business logic and centrally wraps DAO-level exceptions (Hibernate/PostgreSQL)
  * into custom exceptions:
@@ -24,7 +24,7 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     /**
-     * DAO for accessing {@link User} entities.
+     * DAO for accessing {@link UserEntity} entities.
      */
     private final UserDao dao;
 
@@ -55,11 +55,12 @@ public class UserServiceImpl implements UserService {
             if (dao.findByEmail(email) != null) {
                 throw new DuplicateException("User with this email already exists");
             }
-            User user = new User(name, email, age);
+            UserEntity user = new UserEntity(name, email, age);
             dao.save(user);
         } catch (DuplicateException | DatabaseException ex) {
             throw ex;
         } catch (Exception ex) {
+            ex.printStackTrace();
             throw new DatabaseException("Unexpected error while creating user", ex);
         }
     }
@@ -68,13 +69,13 @@ public class UserServiceImpl implements UserService {
      * Retrieves a user by their ID.
      *
      * @param id user ID
-     * @return {@link User} with the given ID
+     * @return {@link UserEntity} with the given ID
      * @throws DatabaseException if the user is not found or a database error occurs
      */
     @Override
-    public User getUser(Long id) {
+    public UserEntity getUser(Long id) {
         try {
-            User user = dao.getById(id);
+            UserEntity user = dao.getById(id);
             if (user == null) {
                 throw new DatabaseException("User not found with id: " + id);
             }
@@ -89,11 +90,11 @@ public class UserServiceImpl implements UserService {
     /**
      * Retrieves all users.
      *
-     * @return list of all {@link User} entities
+     * @return list of all {@link UserEntity} entities
      * @throws DatabaseException if a database error occurs
      */
     @Override
-    public List<User> getAllUsers() {
+    public List<UserEntity> getAllUsers() {
         try {
             return dao.getAll();
         } catch (DatabaseException ex) {
@@ -117,7 +118,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updateUser(Long id, UserUpdateDto dto) {
         try {
-            User user = dao.getById(id);
+            UserEntity user = dao.getById(id);
             if (user == null) {
                 throw new DatabaseException("User not found with id: " + id);
             }
@@ -125,7 +126,7 @@ public class UserServiceImpl implements UserService {
             if (dto.name() != null) user.setName(dto.name());
 
             if (dto.email() != null) {
-                User exist = dao.findByEmail(dto.email());
+                UserEntity exist = dao.findByEmail(dto.email());
                 if (exist != null && !exist.getId().equals(user.getId())) {
                     throw new DuplicateException("User with this email already exists");
                 }
@@ -154,7 +155,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUser(Long id) {
         try {
-            User user = dao.getById(id);
+            UserEntity user = dao.getById(id);
             if (user == null) {
                 throw new DatabaseException("User not found with id: " + id);
             }

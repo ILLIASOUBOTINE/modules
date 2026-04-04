@@ -2,13 +2,13 @@ package org.example.console;
 
 import org.example.service.UserService;
 import org.example.dto.UserUpdateDto;
-import org.example.entity.User;
+import org.example.entity.UserEntity;
 
 import java.util.List;
 import java.util.Scanner;
 
 /**
- * Console-based application for managing {@link User} entities.
+ * Console-based application for managing {@link UserEntity} entities.
  * <p>
  * Provides a simple interactive menu for performing CRUD operations on users:
  * create, read (by id or all), update, and delete.
@@ -112,7 +112,7 @@ public class ConsoleApp {
             System.out.print("Enter id: ");
             Long id = Long.parseLong(scanner.nextLine());
 
-            User user = userService.getUser(id);
+            UserEntity user = userService.getUser(id);
             System.out.println(user);
 
         } catch (NumberFormatException e) {
@@ -128,7 +128,7 @@ public class ConsoleApp {
      */
     private void getAllUsers() {
         try {
-            List<User> users = userService.getAllUsers();
+            List<UserEntity> users = userService.getAllUsers();
             if (users.isEmpty()) {
                 System.out.println("No users in the database!");
             } else {
