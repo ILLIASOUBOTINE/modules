@@ -6,7 +6,6 @@ import org.example.exception.DuplicateException;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.Transaction;
-import org.hibernate.exception.ConstraintViolationException;
 import org.hibernate.exception.JDBCConnectionException;
 
 import java.util.List;
@@ -86,14 +85,17 @@ public abstract class CrudDaoImpl<E> implements CrudDao<E> {
             t = session.beginTransaction();
             session.save(e);
             t.commit();
-        } catch (ConstraintViolationException ex) {
-            rollback(t);
-            throw new DuplicateException("Unique constraint violation during save", ex);
-        } catch (JDBCConnectionException ex) {
-            rollback(t);
-            throw new DatabaseException("Database connection error", ex);
         } catch (Exception ex) {
             rollback(t);
+
+            if (isConstraintViolation(ex)) {
+                throw new DuplicateException("Unique constraint violation during save", ex);
+            }
+
+            if (ex instanceof JDBCConnectionException || ex.getCause() instanceof JDBCConnectionException) {
+                throw new DatabaseException("Database connection error", ex);
+            }
+
             throw new DatabaseException("Unexpected database error during save", ex);
         }
     }
@@ -112,14 +114,16 @@ public abstract class CrudDaoImpl<E> implements CrudDao<E> {
             t = session.beginTransaction();
             session.update(e);
             t.commit();
-        } catch (ConstraintViolationException ex) {
-            rollback(t);
-            throw new DuplicateException("Unique constraint violation during update", ex);
-        } catch (JDBCConnectionException ex) {
-            rollback(t);
-            throw new DatabaseException("Database connection error", ex);
         } catch (Exception ex) {
-            rollback(t);
+
+            if (isConstraintViolation(ex)) {
+                throw new DuplicateException("Unique constraint violation during update", ex);
+            }
+
+            if (ex instanceof JDBCConnectionException || ex.getCause() instanceof JDBCConnectionException) {
+                throw new DatabaseException("Database connection error", ex);
+            }
+
             throw new DatabaseException("Unexpected database error during update", ex);
         }
     }
@@ -136,8 +140,13 @@ public abstract class CrudDaoImpl<E> implements CrudDao<E> {
         try (Session session = sessionFactory.openSession()) {
             t = session.beginTransaction();
             E e = session.get(eClass, id);
+            if (e == null) {
+                throw new DatabaseException("User not found with id: " + id);
+            }
             session.delete(e);
             t.commit();
+        } catch (DatabaseException ex) {
+            throw new DatabaseException("User not found with id: " + id);
         } catch (JDBCConnectionException ex) {
             rollback(t);
             throw new DatabaseException("Database connection error", ex);
@@ -156,5 +165,25 @@ public abstract class CrudDaoImpl<E> implements CrudDao<E> {
         if (t != null) {
             t.rollback();
         }
+    }
+
+    /**
+     * Checks if the provided exception or any of its causes is a
+     * {@link org.hibernate.exception.ConstraintViolationException}.
+     * <p>
+     * This helper method performs a recursive check down the exception chain.
+     * This is necessary because Hibernate often wraps low-level database
+     * constraint violations (like unique constraint failures) into higher-level
+     * exceptions such as {@code PersistenceException} or {@code RollbackException}.
+     * </p>
+     *
+     * @param ex the exception caught during a database operation.
+     * @return {@code true} if a constraint violation is found in the stack trace;
+     * {@code false} otherwise.
+     */
+    private boolean isConstraintViolation(Exception ex) {
+        return ex instanceof org.hibernate.exception.ConstraintViolationException
+                || ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException
+                || (ex.getCause() != null && ex.getCause().getCause() instanceof org.hibernate.exception.ConstraintViolationException);
     }
 }

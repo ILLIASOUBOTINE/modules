@@ -60,7 +60,6 @@ public class UserServiceImpl implements UserService {
         } catch (DuplicateException | DatabaseException ex) {
             throw ex;
         } catch (Exception ex) {
-            ex.printStackTrace();
             throw new DatabaseException("Unexpected error while creating user", ex);
         }
     }
