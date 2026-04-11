@@ -1,26 +1,11 @@
 package org.example;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-import org.example.config.HibernateConfig;
-import org.example.console.ConsoleApp;
-import org.example.dao.UserDao;
-import org.example.dao.UserDaoImpl;
-import org.example.service.UserService;
-import org.example.service.UserServiceImpl;
-
+@SpringBootApplication
 public class Main {
     public static void main(String[] args) {
-
-        UserDao userDao = new UserDaoImpl();
-        UserService userService = new UserServiceImpl(userDao);
-        ConsoleApp app = new ConsoleApp(userService);
-
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Close Hibernate");
-            HibernateConfig.getSessionFactory().close();
-        }));
-
-        app.start();
+        SpringApplication.run(Main.class, args);
     }
 }
