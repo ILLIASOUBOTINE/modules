@@ -1,168 +1,103 @@
 package org.example.service;
 
-import org.example.dao.UserDao;
+import org.example.dto.UserCreateDto;
+import org.example.dto.UserDTO;
 import org.example.dto.UserUpdateDto;
 import org.example.entity.UserEntity;
-import org.example.exception.DuplicateException;
-import org.example.exception.DatabaseException;
+import org.example.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * Service layer implementation for managing {@link UserEntity} entities.
- * <p>
- * Handles business logic and centrally wraps DAO-level exceptions (Hibernate/PostgreSQL)
- * into custom exceptions:
- * <ul>
- *     <li>{@link DuplicateException} — when trying to create or update a user with an existing email.</li>
- *     <li>{@link DatabaseException} — for other unexpected database errors.</li>
- * </ul>
- * <p>
- * This service uses {@link UserDao} for all CRUD operations and ensures safe
- * interaction with a console interface or other layers of the application.
+ * Implementation of {@link UserService} providing business logic,
+ * including validation for unique emails and existing IDs.
  */
+@Service
 public class UserServiceImpl implements UserService {
+    private final UserRepository userRepository;
 
-    /**
-     * DAO for accessing {@link UserEntity} entities.
-     */
-    private final UserDao dao;
-
-    /**
-     * Constructs the service with a given {@link UserDao}.
-     *
-     * @param dao DAO instance for user operations
-     */
-    public UserServiceImpl(UserDao dao) {
-        this.dao = dao;
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     /**
-     * Creates a new user.
-     * <p>
-     * Checks if a user with the given email already exists. If yes, throws {@link DuplicateException}.
-     * Any other database errors are wrapped in {@link DatabaseException}.
-     *
-     * @param name  user name
-     * @param email user email (must be unique)
-     * @param age   user age
-     * @throws DuplicateException if a user with the given email already exists
-     * @throws DatabaseException  if a database error occurs
+     * {@inheritDoc}
+     * @throws RuntimeException if the email address is already registered.
      */
     @Override
-    public void createUser(String name, String email, int age) {
-        try {
-            if (dao.findByEmail(email) != null) {
-                throw new DuplicateException("User with this email already exists");
-            }
-            UserEntity user = new UserEntity(name, email, age);
-            dao.save(user);
-        } catch (DuplicateException | DatabaseException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new DatabaseException("Unexpected error while creating user", ex);
+    public UserDTO createUser(UserCreateDto dto) {
+        if (userRepository.existsByEmail(dto.email())) {
+            throw new RuntimeException("Пользователь с таким email уже существует");
         }
+
+        UserEntity user = new UserEntity();
+        user.setName(dto.name());
+        user.setEmail(dto.email());
+        user.setAge(dto.age());
+
+        UserEntity saved = userRepository.save(user);
+        return mapToDto(saved);
     }
 
     /**
-     * Retrieves a user by their ID.
-     *
-     * @param id user ID
-     * @return {@link UserEntity} with the given ID
-     * @throws DatabaseException if the user is not found or a database error occurs
+     * {@inheritDoc}
+     * @throws RuntimeException if user is not found or if the new email belongs to another user.
      */
     @Override
-    public UserEntity getUser(Long id) {
-        try {
-            UserEntity user = dao.getById(id);
-            if (user == null) {
-                throw new DatabaseException("User not found with id: " + id);
-            }
-            return user;
-        } catch (DatabaseException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new DatabaseException("Unexpected error while fetching user", ex);
+    public UserDTO updateUser(Long id, UserUpdateDto dto) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Пользователь с ID " + id + " не найден"));
+
+        if (!user.getEmail().equals(dto.email()) && userRepository.existsByEmail(dto.email())) {
+            throw new RuntimeException("Email " + dto.email() + " уже занят другим пользователем");
         }
+
+        user.setName(dto.name());
+        user.setEmail(dto.email());
+        user.setAge(dto.age());
+
+        return mapToDto(userRepository.save(user));
     }
 
-    /**
-     * Retrieves all users.
-     *
-     * @return list of all {@link UserEntity} entities
-     * @throws DatabaseException if a database error occurs
-     */
     @Override
-    public List<UserEntity> getAllUsers() {
-        try {
-            return dao.getAll();
-        } catch (DatabaseException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new DatabaseException("Unexpected error while fetching users", ex);
-        }
+    public UserDTO getUserById(Long id) {
+        return userRepository.findById(id)
+                .map(this::mapToDto)
+                .orElseThrow(() -> new RuntimeException("Пользователь с ID " + id + " не найден"));
     }
 
-    /**
-     * Updates an existing user.
-     * <p>
-     * Fields in {@link UserUpdateDto} that are null remain unchanged.
-     * Checks for email uniqueness before updating; throws {@link DuplicateException} if conflict exists.
-     *
-     * @param id  ID of the user to update
-     * @param dto DTO containing new field values
-     * @throws DuplicateException if the new email is already used by another user
-     * @throws DatabaseException  if the user is not found or a database error occurs
-     */
     @Override
-    public void updateUser(Long id, UserUpdateDto dto) {
-        try {
-            UserEntity user = dao.getById(id);
-            if (user == null) {
-                throw new DatabaseException("User not found with id: " + id);
-            }
-
-            if (dto.name() != null) user.setName(dto.name());
-
-            if (dto.email() != null) {
-                UserEntity exist = dao.findByEmail(dto.email());
-                if (exist != null && !exist.getId().equals(user.getId())) {
-                    throw new DuplicateException("User with this email already exists");
-                }
-                user.setEmail(dto.email());
-            }
-
-            if (dto.age() != null) user.setAge(dto.age());
-
-            dao.update(user);
-
-        } catch (DuplicateException ex) {
-           throw new DuplicateException("Duplicate error: " + ex.getMessage(), ex);
-        } catch (DatabaseException ex) {
-            throw new DatabaseException("Database error: " + ex.getMessage(), ex);
-        } catch (Exception ex) {
-            throw new DatabaseException("Unexpected error while updating user", ex);
-        }
+    public List<UserDTO> getAllUser() {
+        return userRepository.findAll()
+                .stream().map(this::mapToDto)
+                .toList();
     }
 
     /**
-     * Deletes a user by their ID.
-     *
-     * @param id user ID
-     * @throws DatabaseException if a database error occurs
+     * {@inheritDoc}
+     * @throws RuntimeException if user does not exist.
      */
     @Override
     public void deleteUser(Long id) {
-        try {
-            UserEntity user = dao.getById(id);
-            if (user == null) {
-                throw new DatabaseException("User not found with id: " + id);
-            }
-            dao.delete(id);
-        } catch (DatabaseException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new DatabaseException("Unexpected error while deleting user", ex);
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("Невозможно удалить: Пользователь с ID " + id + " не найден");
         }
+        userRepository.deleteById(id);
+    }
+
+    /**
+     * Converts a {@link UserEntity} to a {@link UserDTO}.
+     *
+     * @param user the database entity.
+     * @return the mapped data transfer object.
+     */
+    private UserDTO mapToDto(UserEntity user) {
+        return new UserDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getAge()
+        );
     }
 }

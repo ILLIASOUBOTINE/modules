@@ -5,12 +5,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 
 /**
- * Data Transfer Object for updating an existing user's information.
- * * @param name  The updated name of the user. Must not be blank.
- * @param email The updated email address. Must be a valid email format and not blank.
- * @param age   The updated age of the user. Must be a positive number.
+ * Data Transfer Object representing a user's full profile information.
+ * Typically used for returning user data in response bodies.
+ *
+ * @param id    The unique database identifier.
+ * @param name  The user's display name.
+ * @param email The user's unique email address.
+ * @param age   The user's age.
  */
-public record UserUpdateDto(
+public record UserDTO(
+        Long id,
+
         @NotBlank(message = "Имя не может быть пустым")
         String name,
 

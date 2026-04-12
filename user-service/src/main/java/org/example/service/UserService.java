@@ -1,54 +1,47 @@
 package org.example.service;
 
+import org.example.dto.UserCreateDto;
+import org.example.dto.UserDTO;
 import org.example.dto.UserUpdateDto;
-import org.example.entity.UserEntity;
-import org.example.exception.DuplicateException;
 
 import java.util.List;
 
 /**
- * Service layer for managing User entities.
- * Provides business logic and validation.
+ * Service interface defining business logic for user management.
  */
 public interface UserService {
 
     /**
-     * Creates a new user.
-     *
-     * @param name user name
-     * @param email unique email
-     * @param age user age
-     * @throws DuplicateException if email already exists
+     * Registers a new user in the system.
+     * @param dto user creation data.
+     * @return the created user as a {@link UserDTO}.
      */
-    void createUser(String name, String email, int age);
+    UserDTO createUser(UserCreateDto dto);
 
     /**
-     * Returns user by id.
-     *
-     * @param id user id
-     * @return User or null if not found
+     * Updates profile data for an existing user.
+     * @param id the unique identifier of the user.
+     * @param dto updated user data.
+     * @return the updated user as a {@link UserDTO}.
      */
-    UserEntity getUser(Long id);
+    UserDTO updateUser(Long id, UserUpdateDto dto);
 
     /**
-     * Returns all users.
-     *
-     * @return list of users
+     * Finds a user by their unique ID.
+     * @param id the unique identifier.
+     * @return the found user.
      */
-    List<UserEntity> getAllUsers();
+    UserDTO getUserById(Long id);
 
     /**
-     * Updates user fields.
-     *
-     * @param userId user id
-     * @param dto fields to update
+     * Retrieves all users currently stored in the system.
+     * @return list of user data transfer objects.
      */
-    void updateUser(Long userId, UserUpdateDto dto);
+    List<UserDTO> getAllUser();
 
     /**
-     * Deletes user by id.
-     *
-     * @param id user id
+     * Removes a user from the database.
+     * @param id the unique identifier of the user to delete.
      */
     void deleteUser(Long id);
 }
