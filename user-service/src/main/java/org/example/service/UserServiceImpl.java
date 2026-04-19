@@ -1,11 +1,14 @@
 package org.example.service;
 
+import org.example.dto.OperationType;
 import org.example.dto.UserCreateDto;
 import org.example.dto.UserDTO;
 import org.example.dto.UserUpdateDto;
 import org.example.entity.UserEntity;
+import org.example.kafka.producer.UserProducer;
 import org.example.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -16,9 +19,11 @@ import java.util.List;
 @Service
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final UserProducer userProducer;
 
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, UserProducer userProducer) {
         this.userRepository = userRepository;
+        this.userProducer = userProducer;
     }
 
     /**
@@ -26,6 +31,7 @@ public class UserServiceImpl implements UserService {
      * @throws RuntimeException if the email address is already registered.
      */
     @Override
+    @Transactional
     public UserDTO createUser(UserCreateDto dto) {
         if (userRepository.existsByEmail(dto.email())) {
             throw new RuntimeException("Пользователь с таким email уже существует");
@@ -37,6 +43,7 @@ public class UserServiceImpl implements UserService {
         user.setAge(dto.age());
 
         UserEntity saved = userRepository.save(user);
+        userProducer.sendEvent(dto.email(), OperationType.CREATE);
         return mapToDto(saved);
     }
 
@@ -79,11 +86,15 @@ public class UserServiceImpl implements UserService {
      * @throws RuntimeException if user does not exist.
      */
     @Override
+    @Transactional
     public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new RuntimeException("Невозможно удалить: Пользователь с ID " + id + " не найден");
-        }
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Невозможно удалить: Пользователь с ID " + id + " не найден"));
+
+        String email = user.getEmail();
+
         userRepository.deleteById(id);
+        userProducer.sendEvent(email, OperationType.DELETE);
     }
 
     /**
