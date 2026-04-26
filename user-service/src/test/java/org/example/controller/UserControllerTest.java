@@ -39,8 +39,8 @@ class UserControllerTest {
 
         mockMvc.perform(MockMvcRequestBuilders.get("/api/users"))
                 .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].name").value("user"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$[0].email").value("user@mail.com"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$._embedded.userDTOList[0].name").value("user"))
+                .andExpect(MockMvcResultMatchers.jsonPath("$._embedded.userDTOList[0].email").value("user@mail.com"));
     }
 
     @Test
