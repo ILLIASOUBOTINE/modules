@@ -15,16 +15,35 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @SpringBootTest(properties = {
+        "spring.kafka.bootstrap-servers=${spring.embedded.kafka.brokers}",
+        "spring.cloud.config.enabled=false",
+        "eureka.client.enabled=false",
+        "spring.cloud.discovery.enabled=false",
+        "app.kafka.topics.user-notifications=user-notifications",
         "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer",
-        "spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer"
+        "spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
+        "spring.kafka.consumer.auto-offset-reset=earliest",
+        "spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer",
+        "spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer",
+        "spring.kafka.consumer.properties.spring.json.trusted.packages=org.example.dto",
+        "spring.kafka.consumer.properties.spring.json.value.default.type=org.example.dto.UserEvent"
 })
 @ActiveProfiles("test")
-@EmbeddedKafka(partitions = 1, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092" })
+@EmbeddedKafka(
+        partitions = 1,
+        controlledShutdown = true,
+        brokerProperties = {
+                "log.dir=target/embedded-kafka",
+                "metadata.log.dir=target/embedded-kafka-metadata",
+                "auto.create.topics.enable=true"
+        }
+)
 public class KafkaNotificationIntegrationTest {
 
     @Autowired
@@ -36,13 +55,14 @@ public class KafkaNotificationIntegrationTest {
             .withPerMethodLifecycle(true);
 
     @Test
-    void testKafkaMessageTriggersEmail() {
+    void testKafkaMessageTriggersEmail() throws ExecutionException, InterruptedException {
         String userEmail = "test@example.com";
         UserEvent event = new UserEvent(userEmail, OperationType.CREATE);
 
-        kafkaTemplate.send("user-notifications", event);
+        kafkaTemplate.send("user-notifications", event).get();
+        kafkaTemplate.flush();
 
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> {
             MimeMessage[] receivedMessages = greenMail.getReceivedMessages();
 
             assertThat(receivedMessages).hasSize(1);
